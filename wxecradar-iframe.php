@@ -13,8 +13,10 @@
 # Version 1.01 - 19-Apr-2021 - added diagnostic output re curl fetch results
 # Version 1.02 - 08-Jul-2021 - added overlays in ./radar/ (thanks to M. Romer)
 # Version 1.03 - 02-Nov-2022 - added NATIONAL map (thanks to M. Romer)
+# Version 1.04 - 25-Apr-2024 - change to use DPQPE images as EC deprecated PRECIPET, CASPI .gif generation
+# Version 1.05 - 07-Oct-2025 - change to EC radar URL locations
 ############################################################################
-$Version = 'wxecradar-iframe.php V1.03 - 02-Nov-2022';
+$Version = 'wxecradar-iframe.php V1.05 - 07-Oct-2025';
 if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' ) {
 //--self downloader --
    $filenameReal = __FILE__;
@@ -65,6 +67,7 @@ if (!isset($radar)) { // To test load some defaults if not called by 'wxecradar-
 }
 	if (isset($_GET['radar'])) {
     $radar = $_GET['radar'];
+		$radar = ucfirst(strtolower($radar));
   }
   if (isset($_GET['imageDir'])) {
     $imageDir = $_GET['imageDir'];
@@ -99,8 +102,9 @@ if (!isset($radar)) { // To test load some defaults if not called by 'wxecradar-
 $radInfo = array();
 
 $GifLoc = 'PRECIPET';
+$GifLoc = 'DPQPE';
 if (substr($radarLoc, 0, 3) === 'CAS') { // Determine if site is CAS** or old one, use CAPPI for CAS** and PRECIPET for old ones
-  $GifLoc = 'CAPPI'; // Comment out to disable CAPPI data
+//  $GifLoc = 'CAPPI'; // Comment out to disable CAPPI data
 }
 if (substr($radarLoc, 0, 3) === 'NAT') { // Determine if site is National, use CAPPI only for this option
   $GifLoc = 'CAPPI'; // Comment out to disable CAPPI data
@@ -154,7 +158,7 @@ step_labels = &lt;, &gt; \n\
 
   <body style="width:<?php echo $imageWidth?>px" onload="HAniS.setup(
 'filenames = <?php get_file_names($radarLoc,$radar,', ')?> \n\
-image_base = https://dd.weather.gc.ca/radar/<?php echo $GifLoc; ?>/GIF/<?php echo $radarLoc; ?>/ \n\
+image_base = https://dd.weather.gc.ca/today/radar/<?php echo $GifLoc; ?>/GIF/<?php echo $radarLoc; ?>/ \n\
 controls = startstop, speed, step \n\
 <?php echo $labelsLang; ?>
 controls_style = display:flex;flex-flow:row;background-color:<?php echo $bgndColor?>; \n\
@@ -219,7 +223,7 @@ function get_image_fnames($radar,$radarLoc,$listFiles,$GifLoc) {
 
 	global $numbImages,$goodImages,$GifLoc;
 	$matches = array();
-	$theData = get_data('https://dd.weather.gc.ca/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
+	$theData = get_data('https://dd.weather.gc.ca/today/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
 /*
 <img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101920_WKR_COMP_PRECIPET_SNOW_A11Y.gif">202104101920_WKR_COMP_PRECIPET_SNOW_A11Y.gif</a> 2021-04-10 19:28   23K  
 <img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101930_WKR_COMP_PRECIPET_RAIN.gif">202104101930_WKR_COMP_PRECIPET_RAIN.gif</a>      2021-04-10 19:38   21K  
@@ -243,7 +247,7 @@ function get_image_fnames($radar,$radarLoc,$listFiles,$GifLoc) {
 	
 	foreach ($matches[1] as $i => $img) {
 		if(strpos($img,$radar) !== false
-		   and strpos($img,'A11Y') == false) { // keep the ones we want
+		   and strpos($img,'Contingency') == false) { // keep the ones we want
 			$tImages[] = $img;
 		}
 	}
@@ -252,12 +256,12 @@ function get_image_fnames($radar,$radarLoc,$listFiles,$GifLoc) {
     if ($GifLoc === 'CAPPI') { 
         $GifLoc = 'PRECIPET'; 
     }
-    $theData = get_data('https://dd.weather.gc.ca/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
+    $theData = get_data('https://dd.weather.gc.ca/today/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
     print "<!-- theData returns ".strlen($theData). " bytes -->\n";	
     preg_match_all('!<a href="(.*\.gif)"!Usi', $theData, $matches);
     foreach ($matches[1] as $i => $img) {
       if(strpos($img,$radar) !== false
-         and strpos($img,'A11Y') == false) { // keep the ones we want
+         and strpos($img,'Contingency') == false) { // keep the ones we want
         $tImages[] = $img;
       }
     }
@@ -292,7 +296,7 @@ function get_image_fnames($radar,$radarLoc,$listFiles,$GifLoc) {
     $imageFile = array_reverse($keepImages);
 			
 	  for ($i=0; $i<$numbImages; $i++) {
-		  $image = 'https://dd.weather.gc.ca/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/'.$imageFile[$i];
+		  $image = 'https://dd.weather.gc.ca/today/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/'.$imageFile[$i];
 		  echo $image;
 		  echo '& ';
 		  $radInfo[$i] = $imageFile[$i];
