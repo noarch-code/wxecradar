@@ -7,10 +7,14 @@
 #
 # Version 1.00 - 14-Apr-2021 - initial release
 # Version 1.01 - 01-Nov-2022 - update default to CASKR from WKR
+# Version 1.02 - 21-Nov-2023 - fix bug to now allow $SITE['ecradar'] setting to work
+# Version 1.03 - 25-Apr-2024 - change to use DPQPE images as EC deprecated PRECIPET, CASPI .gif generation
+# Version 1.04 - 08-Oct-2025 - fixed notice errata, add 24hr accum option
 ############################################################################
-$Version = 'wxecradar-inc.php V1.01 - 01-Nov-2022';
-if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' ) {
-//--self downloader --
+$Version = 'wxecradar-inc.php V1.04 - 08-Oct-2025';
+if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' 
+    and strlen($_REQUEST['sce']) == 4) {
+   //--self downloader --
    $filenameReal = __FILE__;
    $download_size = filesize($filenameReal);
    header('Pragma: public');
@@ -20,18 +24,25 @@ if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' ) {
    header("Accept-Ranges: bytes");
    header("Content-Length: $download_size");
    header('Connection: close');
+   
    readfile($filenameReal);
    exit;
-}?>
+}
+if (isset($_REQUEST['sce'])) {
+  header("HTTP/1.1 403 Forbidden");
+  print "<h1>Hacking attempt. Denied.</h1>\n";
+  exit();
+}
+?>
 <div id="selectorsarea">
 <div>
 <?php
 // ini_set("allow_url_fopen", true);
-	if (!isset($radar)) { // For debugging set some defaults if 'wxecradar-inc.php' is called alone
+	if (!isset($radarLoc)) { // For debugging set some defaults if 'wxecradar-inc.php' is called alone
     // you DON'T need to customize these.. change wxecradar.php instead -- this is for testing
 		echo '<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" type="text/javascript"></script>';
 		$radar = 'RAIN'; // Default radar type
-		$radarLoc = 'CASKR'; // IMPORTAMT!!! Default radar location is set here
+		$radarLoc = 'CASKR'; // IMPORTANT!!! Default radar location is set here
 		$imageWidth = 600; // Width of radar images
 		$iframeWidth = 617; // Default IFrame Width -- adjust as needed
 		$iframeHeight = 600; // Default IFrame Height -- adjust as needed
@@ -134,6 +145,7 @@ foreach ($radarList as $S => $sList) {
     <select id="radar">
     <option value="RAIN"<?php echo ($radar=="RAIN"?' selected="selected"':'')?>><?php echo ($Lang=='fr')?'Pluie':'Rain';?></option>
     <option value="SNOW"<?php echo ($radar=="SNOW"?' selected="selected"':'')?>><?php echo ($Lang=='fr')?'Neige':'Snow';?></option>
+    <option value="24HR"<?php echo ($radar=="24HR"?' selected="selected"':'')?>><?php echo ($Lang=='fr')?'24hr accum':'24hr accum';?></option>
     </select>
 		</td>
 
@@ -152,7 +164,7 @@ foreach ($radarList as $S => $sList) {
     <td width="<?php echo $autoRefresh?16:28?>%" align="center" style="padding:3px;">
     
       <span style="color:#000000; font-size:13px; font-family:arial, times new roman;">
-      <b><?php echo ($Lang=='fr')?'Actualisation<br/>automatique':'AutoRefresh';?></b> &nbsp;
+      <b><?php echo ($Lang=='fr')?'Actualisation<br/>automatique':'Auto<br/>Refresh';?></b> &nbsp;
 			</span>  
       <select id="autorefreshoff">
       	<option value="0"<?php echo ($autoRefreshOff==0)?' selected="selected"':''?>><?php echo ($Lang=='fr')?'permettre':'On';?></option>
@@ -283,6 +295,7 @@ foreach ($radarList as $S => $sList) {
 $ridgeRadars = array (
     "RAIN" => "Rain",
     "SNOW" => "Snow",
+    "24HR" => "24hr accum"
 );
 $ourRadar = '';
 $ourState = '';
@@ -321,9 +334,7 @@ foreach ($radarList as $key => $liststate) {
 		<iframe name="wxradarshanis" width="<?php echo $iframeWidth?>" height="<?php echo $iframeHeight?>" src="./wxecradar-iframe.php?radar=<?php echo $radar?>&amp;radarLoc=<?php echo $radarLoc?>&amp;imageWidth=<?php echo $imageWidth?>&amp;bgndColor=<?php echo $bgndColor?>&amp;btnColor=<?php echo $btnColor?>&amp;btnTextColor=<?php echo $btnTextColor?>&amp;animRate=<?php echo $animRate?>&amp;pauseSeconds=<?php echo $pauseSeconds?>&amp;numbImages=<?php echo $numbImages?>&amp;smoothingOn=<?php echo $smoothingOn?>&amp;lang=<?php echo $Lang; ?>" scrolling="no" style="border:none"></iframe>
 <hr/>
 
-  <span style="font-size:9px; text-align:center">The above images are produced by <a href="https://weather.gc.ca/map_e.html" target="_blank" title="Off Site">EC Radar</a> -- Animation by <a href="https://www.ssec.wisc.edu/hanis/index.html" target="_blank" title="New Tab">HAniS</a> &copy;2014-<?php echo date("Y")?> by Tom Whittaker<br/>
-<a href="https://weather.gc.ca/map_e.html" target="_blank" title="New Tab">Environment Canada Radar</a>&nbsp;&nbsp;
-<br/>
+  <span style="font-size:9px; text-align:center"><a href="<?php echo $Lang=='en'?'https://weather.gc.ca/index_e.html?layers=alert,radar':'https://meteo.gc.ca/index_f.html?layers=alert,radar';?>" target="_blank" title="Off Site"><?php echo $Lang=='en'?'Environment Canada Weather Radar':'Environnement Canada Radar m&eacute;t&eacute;o';?></a> -- Animation by <a href="https://www.ssec.wisc.edu/hanis/index.html" target="_blank" title="New Tab">HAniS</a> &copy;2014-<?php echo date("Y")?> by Tom Whittaker<br/>
 HAniS Script by <a href="https://www.gwwilkins.org" title="Off Site" target="_blank">SE Lincoln Weather</a> and 
  <a href="https://saratoga-weather.org/" target="_blank" title="Off Site">Saratoga-Weather</a><br/>
   </span>
@@ -341,20 +352,18 @@ if(file_exists('wxecradar-list-inc.php')) {
 // Builtin default list
 	print "<!-- using builtin radar site list -->\n";
 $StateList = array (
- // 'NAT' => 'National Map', # no longer available
   'Pacific' => array(
-		'PYR' => 'Pacific Region',
-		'WUJ' => 'Aldergrove (near Vancouver)',
-		'XPG' => 'Prince George',
-		'XSS' => 'Silver Star Mountain (near Vernon)',
-		'XSI' => 'Victoria',
+		'CASAG' => 'Aldergrove (near Vancouver)',        # was WUJ V1.02
+		'CASPG' => 'Prince George',                      # was XPG V1.02
+		'CASSS' => 'Silver Star Mountain (near Vernon)', # was XSS V1.02
+		'CASHP' => 'Halfmoon Peak',      # was XSI V1.05 (Victoria) CASHP is new site for Victoria
 	),
 	'Prairies' => array(
-		'PNR' => 'Prairies Region',
 		'CASBE' => 'Bethune (near Regina)',
-		'WHK' => 'Carvel (near Edmonton)',
+		'CASCV' => 'Carvel (near Edmonton)',           # was WHK V1.01
+		'CASFM' => 'Fort McMurray',                    # new V1.01
 		'CASFW' => 'Foxwarren (near Brandon)',
-		'WHN' => 'Jimmy Lake (near Cold Lake)',
+		'CASCL' => 'Cold Lake (near Jimmy Lake)',      # was WHN V1.01
 		'CASRA' => 'Radisson (near Saskatoon)',
 		'CASSU' => 'Schuler (near Medicine Hat)',
 		'CASSR' => 'Spirit River (near Grande Prairie)',
@@ -362,30 +371,27 @@ $StateList = array (
 		'CASWL' => 'Woodlands (near Winnipeg)',
 	),
 	'Ontario' => array(
-		'ONT' => 'Ontario Region',
-		'WBI' => 'Britt (near Sudbury)',
+		'CASBI' => 'Britt (near Sudbury)',             # was WBI V1.01
 		'CASDR' => 'Dryden',
 		'CASET' => 'Exeter (near London)',
-		'XFT' => 'Franktown (near Ottawa)',
-		'WKR' => 'King City (near Toronto)',
+		'CASFT' => 'Franktown (near Ottawa)',          # was XFT V1.01
+		'CASKR' => 'King City (near Toronto)',         # was WKR V1.01
 		'CASMR' => 'Montreal River (near Sault Ste Marie)',
 		'CASRF' => 'Smooth Rock Falls (near Timmins)',
-		'XNI' => 'Superior West (near Thunder Bay)',
+		'CASSN' => 'Shuniah (near Thunder Bay)',       # was XNI V1.01
 	),
 	'Qu&eacute;bec' => array(
-		'QUE' => 'Qu&eacute;bec Region',
-		'WMB' => 'Lac Castor (near Saguenay)',
+    'CASMA' => 'Lac Castor / Mont Apica(near Saguenay)', # was WMB V1.04 
 		'CASLA' => 'Landrienne (near Rouyn-Noranda)',
 		'CASBV' => 'Blainville (near Montr&eacute;al)',
 		'CASVD' => 'Val d\'Ir&egrave;ne(near Mont-Joli)',
 		'CASSF' => 'Sainte-Fran&ccedil;oise (near Trois-Rivi&egrave;res)',
 	),
 	'Atlantic' => array(
-		'ATL' => 'Atlantic Region',
 		'CASCM' => 'Chipman (near Fredericton)',
-		'XGO' => 'Halifax',
+		'CASGO' => 'Halifax',                          # was XGO V1.01
 		'CASHR' => 'Holyrood (near St. John\'s)',
-		'XME' => 'Marble Mountain',
+		'CASMM' => 'Marble Mountain',                  # was XME V1.01
 		'CASMB' => 'Marion Bridge (near Sydney)',
 	),
 ); // end of default $StateList

@@ -9,6 +9,8 @@
 # Version 1.03 - 02-Nov-2022 - added NATIONAL map (thanks M. Romer)
 # Version 1.04 - 13-Feb-2023 - added CASMA overlay maps (thanks M. Romer)
 # Version 1.05 - 06-Sep-2023 - added CASHP snd CASSN overlays (thanks M. Romer)
+# Version 1.06 - 25-Apr-2024 - removed composite maps as not available on DPQPE images by EC
+# Version 1.07 - 08-Oct-2025 - restored composite maps as now available on CASPI image
 #
 ####################################################################################
 #
@@ -22,15 +24,16 @@ $StateList = array (
   'National' => array(
     'NATIONAL' => 'National Map', # use CAPPI folder for normal background and PRECIPET folder for white background
   ),
+
   'Pacific' => array(
-		'PYR' => 'Pacific Region',
+    'PYR' => 'Pacific Region',
 		'CASAG' => 'Aldergrove (near Vancouver)',        # was WUJ V1.02
 		'CASPG' => 'Prince George',                      # was XPG V1.02
 		'CASSS' => 'Silver Star Mountain (near Vernon)', # was XSS V1.02
 		'CASHP' => 'Halfmoon Peak',      # was XSI V1.05 (Victoria) CASHP is new site for Victoria
 	),
 	'Prairies' => array(
-		'PNR' => 'Prairies Region',
+    'PNR' => 'Prairies Region',
 		'CASBE' => 'Bethune (near Regina)',
 		'CASCV' => 'Carvel (near Edmonton)',           # was WHK V1.01
 		'CASFM' => 'Fort McMurray',                    # new V1.01
@@ -43,7 +46,7 @@ $StateList = array (
 		'CASWL' => 'Woodlands (near Winnipeg)',
 	),
 	'Ontario' => array(
-		'ONT' => 'Ontario Region',
+    'ONT' => 'Ontario Region',
 		'CASBI' => 'Britt (near Sudbury)',             # was WBI V1.01
 		'CASDR' => 'Dryden',
 		'CASET' => 'Exeter (near London)',
@@ -54,7 +57,7 @@ $StateList = array (
 		'CASSN' => 'Shuniah (near Thunder Bay)',       # was XNI V1.01
 	),
 	'Qu&eacute;bec' => array(
-		'QUE' => 'Qu&eacute;bec Region',
+    'QUE' => 'Qu&eacute;bec Region',
     'CASMA' => 'Lac Castor / Mont Apica(near Saguenay)', # was WMB V1.04 
 		'CASLA' => 'Landrienne (near Rouyn-Noranda)',
 		'CASBV' => 'Blainville (near Montr&eacute;al)',
@@ -62,7 +65,7 @@ $StateList = array (
 		'CASSF' => 'Sainte-Fran&ccedil;oise (near Trois-Rivi&egrave;res)',
 	),
 	'Atlantic' => array(
-		'ATL' => 'Atlantic Region',
+    'ATL' => 'Atlantic Region',
 		'CASCM' => 'Chipman (near Fredericton)',
 		'CASGO' => 'Halifax',                          # was XGO V1.01
 		'CASHR' => 'Holyrood (near St. John\'s)',

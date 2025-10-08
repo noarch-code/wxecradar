@@ -15,10 +15,12 @@
 # Version 1.03 - 02-Nov-2022 - added NATIONAL map (thanks to M. Romer)
 # Version 1.04 - 25-Apr-2024 - change to use DPQPE images as EC deprecated PRECIPET, CASPI .gif generation
 # Version 1.05 - 07-Oct-2025 - change to EC radar URL locations
+# Version 1.06 - 08-Oct-2025 - added regional maps, 24hr accum, and auto composite display for inop radar
 ############################################################################
-$Version = 'wxecradar-iframe.php V1.05 - 07-Oct-2025';
-if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' ) {
-//--self downloader --
+$Version = 'wxecradar-iframe.php V1.06 - 08-Oct-2025';
+if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' 
+    and strlen($_REQUEST['sce']) == 4) {
+   //--self downloader --
    $filenameReal = __FILE__;
    $download_size = filesize($filenameReal);
    header('Pragma: public');
@@ -28,9 +30,16 @@ if (isset($_REQUEST['sce']) && strtolower($_REQUEST['sce']) == 'view' ) {
    header("Accept-Ranges: bytes");
    header("Content-Length: $download_size");
    header('Connection: close');
+   
    readfile($filenameReal);
    exit;
-} ?>
+}
+if (isset($_REQUEST['sce'])) {
+  header("HTTP/1.1 403 Forbidden");
+  print "<h1>Hacking attempt. Denied.</h1>\n";
+  exit();
+}
+ ?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -101,14 +110,14 @@ if (!isset($radar)) { // To test load some defaults if not called by 'wxecradar-
   }
 $radInfo = array();
 
-$GifLoc = 'PRECIPET';
 $GifLoc = 'DPQPE';
-if (substr($radarLoc, 0, 3) === 'CAS') { // Determine if site is CAS** or old one, use CAPPI for CAS** and PRECIPET for old ones
-//  $GifLoc = 'CAPPI'; // Comment out to disable CAPPI data
+if (in_array($radarLoc, array('NATIONAL','ATL','ONT','PNR','PYR','QUE')) ) { // Determine if site is regional, use CAPPI only for this option
+  $GifLoc = 'CAPPI'; 
 }
-if (substr($radarLoc, 0, 3) === 'NAT') { // Determine if site is National, use CAPPI only for this option
-  $GifLoc = 'CAPPI'; // Comment out to disable CAPPI data
+if($radar == '24hr') {
+  $GifLoc = '24_HR_ACCUM';
 }
+  echo "<!-- GifLoc=$GifLoc for radarLoc=$radarLoc -->\n";
 
 $errorMessage = get_image_fnames($radar,$radarLoc,$listFiles=false,$GifLoc);
 if ($errorMessage=='Radar Images Currently Unavailable!') {
@@ -202,7 +211,7 @@ function get_file_names($radarLoc,$overlay,$separator){
 /* end get_file_names */
 
 function gen_overlay($radarLoc,$radar,$sep,$labelsOverlay,$labelsComposite) {
-	$composite = array('NATIONAL','ERN','ATL','ONT','PNR','PYR','QUE');
+	$composite = array('NATIONAL','ATL','ONT','PNR','PYR','QUE');
 	$r = $radarLoc;
 	if(in_array($radarLoc,$composite)) {
 	$out = 'overlay_base = ./radar/ \n\
@@ -219,25 +228,22 @@ overlay_filenames = '.$r.'_towns.gif, '.$r.'_addtowns.gif, '.$r.'_roads.gif, '.$
 	return($out);
 }
 // ------------------------------------------------------------------
-function get_image_fnames($radar,$radarLoc,$listFiles,$GifLoc) {
+function get_image_fnames($inradar,$radarLoc,$listFiles,$inGifLoc) {
 
 	global $numbImages,$goodImages,$GifLoc;
+	$composite = array('NATIONAL','ATL','ONT','PNR','PYR','QUE');
+  $radar = $inradar;
+  if(in_array($radarLoc,$composite)) {
+    $radar = 'CAPPI';
+  }
+  $GifLoc = $inGifLoc;
+  if ($inradar == '24hr') {
+    $radar = 'Accum24h';
+    $GifLoc = '24_HR_ACCUM';
+  }
 	$matches = array();
-	$theData = get_data('https://dd.weather.gc.ca/today/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
-/*
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101920_WKR_COMP_PRECIPET_SNOW_A11Y.gif">202104101920_WKR_COMP_PRECIPET_SNOW_A11Y.gif</a> 2021-04-10 19:28   23K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101930_WKR_COMP_PRECIPET_RAIN.gif">202104101930_WKR_COMP_PRECIPET_RAIN.gif</a>      2021-04-10 19:38   21K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101930_WKR_COMP_PRECIPET_RAIN_A11Y.gif">202104101930_WKR_COMP_PRECIPET_RAIN_A11Y.gif</a> 2021-04-10 19:38   21K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101930_WKR_COMP_PRECIPET_SNOW.gif">202104101930_WKR_COMP_PRECIPET_SNOW.gif</a>      2021-04-10 19:38   23K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104101930_WKR_COMP_PRECIPET_SNOW_A11Y.gif">202104101930_WKR_COMP_PRECIPET_SNOW_A11Y.gif</a> 2021-04-10 19:38   23K  
-
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104102110_PYR_PRECIPET_SNOW_WT.gif">202104102110_PYR_PRECIPET_SNOW_WT.gif</a>   2021-04-10 21:24   20K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104102120_PYR_PRECIPET_RAIN_A11Y.gif">202104102120_PYR_PRECIPET_RAIN_A11Y.gif</a> 2021-04-10 21:30   18K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104102120_PYR_PRECIPET_RAIN_WT.gif">202104102120_PYR_PRECIPET_RAIN_WT.gif</a>   2021-04-10 21:30   18K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104102120_PYR_PRECIPET_SNOW_A11Y.gif">202104102120_PYR_PRECIPET_SNOW_A11Y.gif</a> 2021-04-10 21:30   20K  
-<img src="/icons/image2.gif" alt="[IMG]"> <a href="202104102120_PYR_PRECIPET_SNOW_WT.gif">202104102120_PYR_PRECIPET_SNOW_WT.gif</a>   2021-04-10 21:30   20K  
-
-*/
+  $theData = get_data('https://dd.weather.gc.ca/today/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
+  print "<!-- looking at GifLoc=$GifLoc radarLoc=$radarLoc for radar=$radar -->\n";
   print "<!-- theData returns ".strlen($theData). " bytes -->\n";	
 	preg_match_all('!<a href="(.*\.gif)"!Usi', $theData, $matches);
 	#print "<!-- matches\n".var_export($matches,true). " -->\n";
@@ -253,15 +259,9 @@ function get_image_fnames($radar,$radarLoc,$listFiles,$GifLoc) {
 	}
 
   if (count($tImages)<1) {// Revert back to default because no images were found, likely radar is offline
-    if ($GifLoc === 'CAPPI') { 
-        $GifLoc = 'PRECIPET'; 
-    }
-    $theData = get_data('https://dd.weather.gc.ca/today/radar/'.$GifLoc.'/GIF/'.$radarLoc.'/');
-    print "<!-- theData returns ".strlen($theData). " bytes -->\n";	
-    preg_match_all('!<a href="(.*\.gif)"!Usi', $theData, $matches);
     foreach ($matches[1] as $i => $img) {
       if(strpos($img,$radar) !== false
-         and strpos($img,'Contingency') == false) { // keep the ones we want
+         and strpos($img,'Contingency') == true) { // keep the ones we want
         $tImages[] = $img;
       }
     }
